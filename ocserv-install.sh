@@ -4,8 +4,11 @@ install() {
 
 apt update -y
 
-ip=$(hostname -I|cut -f1 -d ' ')
-echo "Your Server IP address is:$ip"
+# need to fill up your domain name or IP here
+# If you want to use domain name, you gotta setup DNS A record at first.
+# For instance: vpn.yourdomain.com x.x.x.x
+ip=''
+echo "Your Server Host Name is:$ip"
 
 echo -e "\e[32mInstalling gnutls-bin\e[39m"
 
@@ -41,17 +44,18 @@ certtool --generate-privkey --outfile server-key.pem
 certtool --generate-certificate --load-privkey server-key.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem --template server.tmpl --outfile server-cert.pem
 
 echo -e "\e[32mInstalling ocserv\e[39m"
+# ocserv will use /etc/ocserv/ocserv.conf as config file by default
 apt install ocserv
 cp /etc/ocserv/ocserv.conf ~/certificates/
 
 sed -i -e 's@auth = "@#auth = "@g' /etc/ocserv/ocserv.conf
 sed -i -e 's@auth = "pam@auth = "#auth = "pam"@g' /etc/ocserv/ocserv.conf
-sed -i -e 's@try-mtu-discovery = @try-mtu-discovery = true@g' /etc/ocserv/ocserv.conf
+sed -i 's|^[# ]*try-mtu-discovery.*|try-mtu-discovery = true|' /etc/ocserv/ocserv.conf
 sed -i -e 's@dns = @#dns = @g' /etc/ocserv/ocserv.conf
 sed -i -e 's@# multiple servers.@dns = 8.8.8.8@g' /etc/ocserv/ocserv.conf
 sed -i -e 's@route =@#route =@g' /etc/ocserv/ocserv.conf
 sed -i -e 's@no-route =@#no-route =@g' /etc/ocserv/ocserv.conf
-sed -i -e 's@cisco-client-compat@cisco-client-compat = true@g' /etc/ocserv/ocserv.conf
+sed -i 's|^[# ]*cisco-client-compat.*|cisco-client-compat = true|' ocserv.conf
 sed -i -e 's@##auth = "#auth = "pam""@auth = "plain[passwd=/etc/ocserv/ocpasswd]"@g' /etc/ocserv/ocserv.conf
 
 sed -i -e 's@server-cert = /etc/ssl/certs/ssl-cert-snakeoil.pem@server-cert = /etc/ocserv/server-cert.pem@g' /etc/ocserv/ocserv.conf
@@ -62,9 +66,12 @@ read username
 
 ocpasswd -c /etc/ocserv/ocpasswd $username
 iptables -t nat -A POSTROUTING -j MASQUERADE
-sed -i -e 's@#net.ipv4.ip_forward=@net.ipv4.ip_forward=@g' /etc/sysctl.conf
+#sed -i -e 's@#net.ipv4.ip_forward=@net.ipv4.ip_forward=@g' /etc/sysctl.conf
+#The config file might be different in different OS. The command below works for debain 6.12.48.
+#The most important thing is path!!
+echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/ocserv-custom.conf
+sysctl -p /etc/sysctl.d/ocserv-custom.conf
 
-sysctl -p /etc/sysctl.conf
 cp ~/certificates/server-key.pem /etc/ocserv/
 cp ~/certificates/server-cert.pem /etc/ocserv/
 echo -e "\e[32mStopping ocserv service\e[39m"
