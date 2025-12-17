@@ -4,10 +4,18 @@ install() {
 
 apt update -y
 
-# need to fill up your domain name or IP here
-# If you want to use domain name, you gotta setup DNS A record at first.
-# For instance: vpn.yourdomain.com x.x.x.x
-ip=''
+
+echo "Please select connection method:"
+echo "1) Domain Name"
+echo "2) IP Address"
+read -p "Input number [1-2]: " host_type
+
+if [ "$host_type" == "1" ]; then
+    read -p "Enter Your Domain Name: " ip
+else
+    ip=$(hostname -I | cut -f1 -d ' ')
+    echo " Auto-detected IP: $ip"
+fi
 echo "Your Server Host Name is:$ip"
 
 echo -e "\e[32mInstalling gnutls-bin\e[39m"
